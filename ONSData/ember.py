@@ -25,6 +25,11 @@ class Metadata:
     def __getattr__(self, attr):
         return self.items.get(attr, None)
 
+
+    @property
+    def zoom(self):
+        return self.items['minzoom'],self.items['maxzoom']
+
     @property
     def bounds(self):
         return list(map(float, self.items["bounds"].split(",")))
@@ -58,7 +63,21 @@ class Tileset:
     def summary (self):
         print('center:',self.metadata.center)
         print('bounds:',self.metadata.bounds)
+        print('zoom:',self.metadata.zoom)
         print(self.metadata.json)
+
+    def available(self,limit=10):
+        conn = sqlite3.connect(
+            f"file:{self.filename}?mode=ro",
+            uri=True,
+            detect_types=sqlite3.PARSE_DECLTYPES,
+        )
+        cursor = conn.execute(
+            """
+            select * from tiles limit %d
+            """%limit)
+
+        print('Available tiles\n',cursor.fetchall())
 
     def get_tile(self, z: int, x: int, y: int):
         conn = sqlite3.connect(
@@ -82,16 +101,29 @@ class Tileset:
             (z, x, y),
         )
         tile_data = cursor.fetchone()
+
+        
+
+
+
         conn.close()
+
+        # return tile_data
         if tile_data is None:
             raise TileNotFound(f"tile z = {z}, x = {x}, y = {y} not found")
+
         return tile_data[0]
+        
+
+
+        
+        # return tile_data[0]
 
     def media_type(self):
         if self.metadata.format == "jpg":
             return "image/jpeg"
         elif self.metadata.format == "pbf":
-            return "pplication/vnd.mapbox-vector-tile"
+            return "application/vnd.mapbox-vector-tile"
         elif self.metadata.format == "png":
             return "image/png"
         elif self.metadata.format == "webp":
